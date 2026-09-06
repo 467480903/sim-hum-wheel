@@ -1,0 +1,191 @@
+# G2 仿真控制器配置
+# joint 控制器   = joint_trajectory_controller (轨迹控制)
+# position 控制器 = position_controllers/JointGroupPositionController (直接位置)
+# 舵轮底盘: swerve 转向(position) + 驱动(velocity) 控制器, 由 swerve_drive_node 做运动学
+
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    # ---------- 左臂 (7 关节) ----------
+    left_arm_joint_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    left_arm_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+    # ---------- 右臂 (7 关节) ----------
+    right_arm_joint_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    right_arm_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+    # ---------- 头 (3 关节) ----------
+    head_joint_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    # ---------- 腰 (5 关节) ----------
+    waist_joint_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    waist_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+    # ---------- 底盘 (8 关节 = 4 舵轮 x 2) ----------
+    chassis_joint_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    chassis_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+    # ---------- 舵轮驱动 (转向 position + 驱动 velocity) ----------
+    swerve_steering_controller:
+      type: position_controllers/JointGroupPositionController
+    swerve_drive_controller:
+      type: velocity_controllers/JointGroupVelocityController
+
+# ============ 左臂 ============
+left_arm_joint_controller:
+  ros__parameters:
+    joints:
+      - idx21_arm_l_joint1
+      - idx22_arm_l_joint2
+      - idx23_arm_l_joint3
+      - idx24_arm_l_joint4
+      - idx25_arm_l_joint5
+      - idx26_arm_l_joint6
+      - idx27_arm_l_joint7
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.01
+      goal_time: 0.0
+
+left_arm_position_controller:
+  ros__parameters:
+    joints:
+      - idx21_arm_l_joint1
+      - idx22_arm_l_joint2
+      - idx23_arm_l_joint3
+      - idx24_arm_l_joint4
+      - idx25_arm_l_joint5
+      - idx26_arm_l_joint6
+      - idx27_arm_l_joint7
+
+# ============ 右臂 ============
+right_arm_joint_controller:
+  ros__parameters:
+    joints:
+      - idx61_arm_r_joint1
+      - idx62_arm_r_joint2
+      - idx63_arm_r_joint3
+      - idx64_arm_r_joint4
+      - idx65_arm_r_joint5
+      - idx66_arm_r_joint6
+      - idx67_arm_r_joint7
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.01
+      goal_time: 0.0
+
+right_arm_position_controller:
+  ros__parameters:
+    joints:
+      - idx61_arm_r_joint1
+      - idx62_arm_r_joint2
+      - idx63_arm_r_joint3
+      - idx64_arm_r_joint4
+      - idx65_arm_r_joint5
+      - idx66_arm_r_joint6
+      - idx67_arm_r_joint7
+
+# ============ 头 ============
+head_joint_controller:
+  ros__parameters:
+    joints:
+      - idx11_head_joint1
+      - idx12_head_joint2
+      - idx13_head_joint3
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.01
+      goal_time: 0.0
+
+# ============ 腰 ============
+waist_joint_controller:
+  ros__parameters:
+    joints:
+      - idx01_body_joint1
+      - idx02_body_joint2
+      - idx03_body_joint3
+      - idx04_body_joint4
+      - idx05_body_joint5
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.01
+      goal_time: 0.0
+
+waist_position_controller:
+  ros__parameters:
+    joints:
+      - idx01_body_joint1
+      - idx02_body_joint2
+      - idx03_body_joint3
+      - idx04_body_joint4
+      - idx05_body_joint5
+
+# ============ 底盘 (8 关节) ============
+chassis_joint_controller:
+  ros__parameters:
+    joints:
+      - idx111_chassis_lwheel_front_joint1
+      - idx112_chassis_lwheel_front_joint2
+      - idx121_chassis_lwheel_rear_joint1
+      - idx122_chassis_lwheel_rear_joint2
+      - idx131_chassis_rwheel_front_joint1
+      - idx132_chassis_rwheel_front_joint2
+      - idx141_chassis_rwheel_rear_joint1
+      - idx142_chassis_rwheel_rear_joint2
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.01
+      goal_time: 0.0
+
+chassis_position_controller:
+  ros__parameters:
+    joints:
+      - idx111_chassis_lwheel_front_joint1
+      - idx112_chassis_lwheel_front_joint2
+      - idx121_chassis_lwheel_rear_joint1
+      - idx122_chassis_lwheel_rear_joint2
+      - idx131_chassis_rwheel_front_joint1
+      - idx132_chassis_rwheel_front_joint2
+      - idx141_chassis_rwheel_rear_joint1
+      - idx142_chassis_rwheel_rear_joint2
+
+# ============ 舵轮: 4 转向 (0-360 连续) + 4 驱动 (无限位) ============
+# 顺序: 左前, 左后, 右前, 右后
+swerve_steering_controller:
+  ros__parameters:
+    joints:
+      - idx111_chassis_lwheel_front_joint1
+      - idx121_chassis_lwheel_rear_joint1
+      - idx131_chassis_rwheel_front_joint1
+      - idx141_chassis_rwheel_rear_joint1
+
+swerve_drive_controller:
+  ros__parameters:
+    joints:
+      - idx112_chassis_lwheel_front_joint2
+      - idx122_chassis_lwheel_rear_joint2
+      - idx132_chassis_rwheel_front_joint2
+      - idx142_chassis_rwheel_rear_joint2

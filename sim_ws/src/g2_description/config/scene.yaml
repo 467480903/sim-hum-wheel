@@ -1,0 +1,27 @@
+# 虚拟工业场景规格 8m x 8m, 中心 (0,0), 边界 [-4,4]x[-4,4]
+# 所有 box: center [x, y], size [长x, 宽y], height 米 (从地面 z=0 起)
+# 被 激光模拟器 / 地图生成器 / 房间 URDF 共同使用
+
+scene:
+  size: [8.0, 8.0]        # 场景尺寸
+  origin: [-4.0, -4.0]    # 场景左下角
+
+boxes:
+  # ---- 场景边缘 4 面墙: 每面长 4m, 宽 0.5m, 高 2m ----
+  - {name: wall_north, center: [0.0, 3.75], size: [4.0, 0.5], height: 2.0}
+  - {name: wall_south, center: [0.0, -3.75], size: [4.0, 0.5], height: 2.0}
+  - {name: wall_east,  center: [3.75, 0.0], size: [0.5, 4.0], height: 2.0}
+  - {name: wall_west,  center: [-3.75, 0.0], size: [0.5, 4.0], height: 2.0}
+
+  # ---- 左上角 2m x 2m 房间, 墙宽 0.5m, 高 2m, 门宽 1.5m (朝南) ----
+  - {name: room_north,     center: [-3.0, 3.75],  size: [2.0, 0.5], height: 2.0}
+  - {name: room_west,      center: [-3.75, 3.0],  size: [0.5, 2.0], height: 2.0}
+  - {name: room_east,      center: [-2.25, 3.0],  size: [0.5, 2.0], height: 2.0}
+  - {name: room_south_w,   center: [-3.875, 2.25], size: [0.25, 0.5], height: 2.0}
+  - {name: room_south_e,   center: [-2.625, 2.25], size: [0.25, 0.5], height: 2.0}
+  # 门: x ∈ [-3.75, -2.25] (宽 1.5m), 高 2m
+
+  # ---- 右下角桌子: 宽(深) 0.5m x 1.0m, 高 1m ----
+  - {name: table, center: [3.2, -3.2], size: [0.5, 1.0], height: 1.0}
+
+robot_start: [0.0, 0.0, 0.0]   # 起点在场景中心 (x, y, yaw)

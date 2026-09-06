@@ -1,0 +1,25 @@
+# colcon 构建产物
+sim_ws/build/
+sim_ws/install/
+sim_ws/log/
+
+# 运行日志 (start_all.sh / ROS_LOG_DIR)
+logs/
+ros_logs/
+
+# uv 虚拟环境 (名为 sim)
+sim/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node
+node_modules/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+*.swp
+.DS_Store

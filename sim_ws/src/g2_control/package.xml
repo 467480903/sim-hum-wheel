@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>g2_control</name>
+  <version>1.0.0</version>
+  <description>G2 仿真控制包: ros2_control 控制器、4舵轮运动学/里程计、虚拟激光、相对运动、导航中继</description>
+  <maintainer email="wxf@todo.todo">wxf</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+  <depend>controller_manager</depend>
+  <depend>joint_trajectory_controller</depend>
+  <depend>position_controllers</depend>
+  <depend>velocity_controllers</depend>
+  <depend>joint_state_broadcaster</depend>
+  <depend>robot_state_publisher</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>rosbridge_server</depend>
+  <depend>navigation2</depend>
+  <depend>slam_toolbox</depend>
+
+  <exec_depend>g2_description</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+<!-- 虚拟工业场景 8m x 8m, 自动生成自 scene.yaml, 勿手改 -->
+<robot name="model_room">
+  <link name="room_world"/>
+
+  <link name="room_floor">
+    <visual>
+      <origin rpy="0 0 0" xyz="0.0 0.0 0.01"/>
+      <geometry><box size="8.4 8.4 0.02"/></geometry>
+      <material name="room_floor_mat"><color rgba="0.55 0.55 0.55 1.0"/></material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.0 0.0 0.01"/>
+      <geometry><box size="8.4 8.4 0.02"/></geometry>
+    </collision>
+  </link>
+  <link name="wall_north">
+    <visual>
+      <origin rpy="0 0 0" xyz="0.0 3.75 1.0"/>
+      <geometry><box size="4.0 0.5 2.0"/></geometry>
+      <material name="wall_north_mat"><color rgba="0.7 0.7 0.72 1.0"/></material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.0 3.75 1.0"/>
+      <geometry><box size="4.0 0.5 2.0"/></geometry>
+    </collision>
+  </link>
+  <link name="wall_south">
+    <visual>
+      <origin rpy="0 0 0" xyz="0.0 -3.75 1.0"/>
+      <geometry><box size="4.0 0.5 2.0"/></geometry>
+      <material name="wall_south_mat"><color rgba="0.7 0.7 0.72 1.0"/></material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0.0 -3.75 1.0"/>
+      <geometry><box size="4.0 0.5 2.0"/></geometry>
+    </collision>
+  </link>
+  <link name="wall_east">
+    <visual>
+      <origin rpy="0 0 0" xyz="3.75 0.0 1.0"/>
+      <geometry><box size="0.5 4.0 2.0"/></geometry>
+      <material name="wall_east_mat"><color rgba="0.7 0.7 0.72 1.0"/></material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="3.75 0.0 1.0"/>
+      <geometry><box size="0.5 4.0 2.0"/></geometry>
+    </collision>
+  </link>
+  <link name="wall_west">
+    <visual>
+      <origin rpy="0 0 0" xyz="-3.75 0.0 1.0"/>
+      <geometry><box size="0.5 4.0 2.0"/></geometry>
+      <material name="wall_west_mat"><color rgba="0.7 0.7 0.72 1.0"/></material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-3.75 0.0 1.0"/>
+      <geometry><box size="0.5 4.0 2.0"/></geometry>
+    </collision>
+  </link>
+  <link name="room_north">
+    <visual>
+      <origin rpy="0 0 0" xyz="-3.0 3.75 1.0"/>
+      <geometry><box size="2.0 0.5 2.0"/></geometry>
+      <material name="room_north_mat"><color rgba="0.75 0.66 0.42 1.0"/></material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-3.0 3.75 1.0"/>
+      <geometry><box size="2.0 0.5 2.0"/></geometry>
+    </collision>
+  </link>
+  <link name="room_west">
+    <visual>
+      <origin rpy="0 0 0" xyz="-3.75 3.0 1.0"/>
+      <geometry><box size="0.5 2.0 2.0"/></geometry>
+      <material name="room_west_mat"><color rgba="0.75 0.66 0.42 1.0"/></material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-3.75 3.0 1.0"/>
+      <geometry><box size="0.5 2.0 2.0"/></geometry>
+    </collision>
+  </link>
+  <link name="room_east">
+    <visual>
+      <origin rpy="0 0 0" xyz="-2.25 3.0 1.0"/>
+      <geometry><box size="0.5 2.0 2.0"/></geometry>
+      <material name="room_east_mat"><color rgba="0.75 0.66 0.42 1.0"/></material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-2.25 3.0 1.0"/>
+      <geometry><box size="0.5 2.0 2.0"/></geometry>
+    </collision>
+  </link>
+  <link name="room_south_w">
+    <visual>
+      <origin rpy="0 0 0" xyz="-3.875 2.25 1.0"/>
+      <geometry><box size="0.25 0.5 2.0"/></geometry>
+      <material name="room_south_w_mat"><color rgba="0.75 0.66 0.42 1.0"/></material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-3.875 2.25 1.0"/>
+      <geometry><box size="0.25 0.5 2.0"/></geometry>
+    </collision>
+  </link>
+  <link name="room_south_e">
+    <visual>
+      <origin rpy="0 0 0" xyz="-2.625 2.25 1.0"/>
+      <geometry><box size="0.25 0.5 2.0"/></geometry>
+      <material name="room_south_e_mat"><color rgba="0.75 0.66 0.42 1.0"/></material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="-2.625 2.25 1.0"/>
+      <geometry><box size="0.25 0.5 2.0"/></geometry>
+    </collision>
+  </link>
+  <link name="table">
+    <visual>
+      <origin rpy="0 0 0" xyz="3.2 -3.2 0.5"/>
+      <geometry><box size="0.5 1.0 1.0"/></geometry>
+      <material name="table_mat"><color rgba="0.35 0.55 0.35 1.0"/></material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="3.2 -3.2 0.5"/>
+      <geometry><box size="0.5 1.0 1.0"/></geometry>
+    </collision>
+  </link>
+
+  <joint name="room_floor_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="room_world"/>
+    <child link="room_floor"/>
+  </joint>
+  <joint name="wall_north_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="room_world"/>
+    <child link="wall_north"/>
+  </joint>
+  <joint name="wall_south_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="room_world"/>
+    <child link="wall_south"/>
+  </joint>
+  <joint name="wall_east_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="room_world"/>
+    <child link="wall_east"/>
+  </joint>
+  <joint name="wall_west_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="room_world"/>
+    <child link="wall_west"/>
+  </joint>
+  <joint name="room_north_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="room_world"/>
+    <child link="room_north"/>
+  </joint>
+  <joint name="room_west_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="room_world"/>
+    <child link="room_west"/>
+  </joint>
+  <joint name="room_east_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="room_world"/>
+    <child link="room_east"/>
+  </joint>
+  <joint name="room_south_w_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="room_world"/>
+    <child link="room_south_w"/>
+  </joint>
+  <joint name="room_south_e_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="room_world"/>
+    <child link="room_south_e"/>
+  </joint>
+  <joint name="table_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="room_world"/>
+    <child link="table"/>
+  </joint>
+</robot>
