@@ -72,12 +72,154 @@ colcon build
 依赖的 ROS2 包：`ros-humble-ros2-control ros-humble-ros2-controllers ros-humble-navigation2
 ros-humble-nav2-bringup ros-humble-slam-toolbox ros-humble-rosbridge-suite`
 
+### 分终端启动并查看日志
+
+调试时可以在不同终端分别启动各服务，日志会直接显示在对应终端。先重新构建一次，使新增的 launch 文件安装到工作空间：
+
+```bash
+cd ~/sim/sim_ws
+source /opt/ros/humble/setup.bash
+colcon build --packages-select g2_control
+```
+
+然后按需在不同终端分别执行（每个终端都先 `source ~/sim/env.sh`）：
+
+```bash
+# 终端 1：控制栈、mock 硬件、机器人状态和控制功能节点
+ros2 launch g2_control control.launch.py
+
+# 终端 2：导航服务（需要地图导航时启动）
+ros2 launch g2_control nav.launch.py
+
+# 终端 3：浏览器与 ROS 通信桥
+ros2 launch g2_control rosbridge.launch.py
+
+# 终端 4：网页静态文件服务器
+ros2 launch g2_control web.launch.py
+```
+
+打开 `http://localhost:8080`。停止某项服务时，在对应终端按 `Ctrl+C`。不要再同时运行 `start_all.sh` 或 `sim.launch.py`，它们会重复启动这些服务。`start_all.sh` 仍可用于后台一键启动；查看单独日志请用上述分终端方式。
+
+## 独立控制器启动与切换
+
+`control.launch.py` 会先启动 `controller_manager`、TF、mock 硬件及功能节点；随后默认激活关节状态、双臂/头/腰的轨迹控制器和两个舵轮控制器。位置控制器及底盘直接控制器会被**加载为 inactive**，可按需独立激活。
+
+> 以下命令必须在控制栈已运行时执行。若只调试控制器，可在一个终端启动控制栈：
+>
+> ```bash
+> cd ~/sim
+> source env.sh
+> ros2 launch g2_control control.launch.py
+> ```
+>
+> 另开一个终端执行下列命令；两个终端都需要先 `source ~/sim/env.sh`。不要同时执行 `start_all.sh` 和 `control.launch.py`，否则会启动两套同名 ROS 节点。
+
+### 查看当前控制器状态
+
+```bash
+cd ~/sim
+source env.sh
+ros2 control list_controllers -c /controller_manager
+```
+
+默认 active 的控制器：
+
+| 控制器 | 类型 | 控制对象 | 命令接口 |
+|---|---|---|---|
+| `joint_state_broadcaster` | 状态广播 | 全部关节状态 | 无 |
+| `left_arm_joint_controller` | 轨迹 | 左臂 7 关节 | `/left_arm_joint_controller/joint_trajectory` |
+| `right_arm_joint_controller` | 轨迹 | 右臂 7 关节 | `/right_arm_joint_controller/joint_trajectory` |
+| `head_joint_controller` | 轨迹 | 头部 3 关节 | `/head_joint_controller/joint_trajectory` |
+| `waist_joint_controller` | 轨迹 | 腰部 5 关节 | `/waist_joint_controller/joint_trajectory` |
+| `swerve_steering_controller` | 位置组控制 | 4 个舵轮转向关节 | `/swerve_steering_controller/commands` (`Float64MultiArray`) |
+| `swerve_drive_controller` | 速度组控制 | 4 个舵轮驱动关节 | `/swerve_drive_controller/commands` (`Float64MultiArray`) |
+
+预加载但 inactive 的控制器：`left_arm_position_controller`、`right_arm_position_controller`、`waist_position_controller`、`chassis_joint_controller`、`chassis_position_controller`。
+
+### 单独启用位置控制器
+
+同一组关节的轨迹控制器与位置控制器不能同时 active。先停用对应轨迹控制器，再启用位置控制器；例如，切换左臂：
+
+```bash
+source ~/sim/env.sh
+ros2 control switch_controllers \
+  --deactivate left_arm_joint_controller \
+  --activate left_arm_position_controller \
+  --strict -c /controller_manager
+```
+
+右臂或腰部使用相同模式：
+
+```bash
+# 右臂
+ros2 control switch_controllers \
+  --deactivate right_arm_joint_controller \
+  --activate right_arm_position_controller \
+  --strict -c /controller_manager
+
+# 腰部
+ros2 control switch_controllers \
+  --deactivate waist_joint_controller \
+  --activate waist_position_controller \
+  --strict -c /controller_manager
+```
+
+位置控制器通过 `/<controller_name>/commands` 接收 `std_msgs/msg/Float64MultiArray`；数组元素顺序与 `sim_ws/src/g2_control/config/controllers.yaml` 中该控制器的 `joints` 顺序完全一致。例如向左臂发送 7 个目标位置：
+
+```bash
+ros2 topic pub --once /left_arm_position_controller/commands \
+  std_msgs/msg/Float64MultiArray '{data: [0.0, 0.2, -0.3, 0.0, 0.0, 0.0, 0.0]}'
+```
+
+切回默认轨迹控制器：
+
+```bash
+ros2 control switch_controllers \
+  --deactivate left_arm_position_controller \
+  --activate left_arm_joint_controller \
+  --strict -c /controller_manager
+```
+
+### 单独启用底盘直接控制器
+
+`chassis_joint_controller`（8 关节轨迹）和 `chassis_position_controller`（8 关节直接位置）用于直接测试底盘关节；正常移动底盘应保持 `swerve_steering_controller`、`swerve_drive_controller` active，并向 `/cmd_vel` 发布速度，由 `swerve_drive_node` 完成运动学解算。
+
+直接控制底盘时，为避免与舵轮控制器争用关节命令，先停用两个舵轮控制器，再激活**其中一个**底盘控制器：
+
+```bash
+# 激活底盘位置控制器
+ros2 control switch_controllers \
+  --deactivate swerve_steering_controller swerve_drive_controller \
+  --activate chassis_position_controller \
+  --strict -c /controller_manager
+
+# 恢复正常舵轮运动学控制
+ros2 control switch_controllers \
+  --deactivate chassis_position_controller \
+  --activate swerve_steering_controller swerve_drive_controller \
+  --strict -c /controller_manager
+```
+
+如需使用 `chassis_joint_controller`，将上例中的 `chassis_position_controller` 替换为 `chassis_joint_controller`；其轨迹话题为 `/chassis_joint_controller/joint_trajectory`。不要同时激活 `chassis_joint_controller` 和 `chassis_position_controller`。
+
+### 加载未预加载的控制器
+
+当前 `control.launch.py` 已加载全部已配置控制器，通常只需切换 active/inactive 状态。若后续新增了 YAML 中的控制器且尚未加载，可使用：
+
+```bash
+source ~/sim/env.sh
+ros2 control load_controller <controller_name> \
+  --set-state inactive -c /controller_manager
+```
+
+再用 `ros2 control switch_controllers --activate <controller_name> ...` 激活它。每次切换后建议执行 `ros2 control list_controllers -c /controller_manager` 确认状态。
+
 ## 网页控制台功能
 
 | 页签 | 功能 | 通信话题 |
 |---|---|---|
 | 轴运动 | 22 关节滑块 (腰5/头3/双臂7+7)，实时同步 + 分组回零 | `/*_joint_controller/joint_trajectory` |
-| 位置运动 | 左右手末端 xyz 引导轴拖拽 (阻尼最小二乘 IK)、末端坐标显示、示教点位保存/回放 (localStorage) | 同上 |
+| 位置运动 | 进入时自动将双臂切换到位置控制器；末端 xyz 引导轴拖拽 (阻尼最小二乘 IK)、步进和示教点位 | `/*_arm_position_controller/commands`；离开回到轨迹控制器 |
 | 底盘运动 | 平移摇杆 + 原地旋转 (直接速度)、里程计闭环相对位移 (前/后/左/右/转) | `/cmd_vel`、`/chassis_relative_move` |
 | 地图导航 | 栅格地图 + 机器人位姿 (AMCL 优先)、点击设目标 / 拖拽定朝向、路径回放、取消导航 | `/nav_goal_pose`、`/nav_cancel`、`/nav_status` |
 

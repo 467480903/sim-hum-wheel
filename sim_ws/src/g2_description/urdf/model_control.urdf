@@ -1168,21 +1168,21 @@
     <joint name="idx01_body_joint1">
       <command_interface name="position"/>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-0.45</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
     <joint name="idx02_body_joint2">
       <command_interface name="position"/>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">0.7</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
     <joint name="idx03_body_joint3">
       <command_interface name="position"/>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-0.2</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
@@ -1224,28 +1224,28 @@
     <joint name="idx21_arm_l_joint1">
       <command_interface name="position"/>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">1.5708</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
     <joint name="idx22_arm_l_joint2">
       <command_interface name="position"/>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-1.5708</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
     <joint name="idx23_arm_l_joint3">
       <command_interface name="position"/>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-1.5708</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
     <joint name="idx24_arm_l_joint4">
       <command_interface name="position"/>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-1.5708</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
@@ -1273,28 +1273,28 @@
     <joint name="idx61_arm_r_joint1">
       <command_interface name="position"/>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-1.5708</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
     <joint name="idx62_arm_r_joint2">
       <command_interface name="position"/>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-1.5708</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
     <joint name="idx63_arm_r_joint3">
       <command_interface name="position"/>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">1.5708</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>
     <joint name="idx64_arm_r_joint4">
       <command_interface name="position"/>
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">-1.5708</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>

@@ -153,13 +153,30 @@ STEER = [j + "1" for j in ["idx111_chassis_lwheel_front_joint", "idx121_chassis_
 DRIVE = [j + "2" for j in ["idx112_chassis_lwheel_front_joint", "idx122_chassis_lwheel_rear_joint",
                             "idx132_chassis_rwheel_front_joint", "idx142_chassis_rwheel_rear_joint"]]
 
+# Ready pose: bent waist, upper arms down, elbows bent 90 degrees with hands forward.
+# The right arm's mounting transform mirrors the signs of joints 1 and 3.
+INITIAL_POSITIONS = {
+    "idx01_body_joint1": -0.45,
+    "idx02_body_joint2": 0.7,
+    "idx03_body_joint3": -0.2,
+    "idx21_arm_l_joint1": 1.5708,
+    "idx22_arm_l_joint2": -1.5708,
+    "idx23_arm_l_joint3": -1.5708,
+    "idx24_arm_l_joint4": -1.5708,
+    "idx61_arm_r_joint1": -1.5708,
+    "idx62_arm_r_joint2": -1.5708,
+    "idx63_arm_r_joint3": 1.5708,
+    "idx64_arm_r_joint4": -1.5708,
+}
+
 
 def joint_block(name, cmds):
     ifs = "\n".join(f'      <command_interface name="{c}"/>' for c in cmds)
+    initial = INITIAL_POSITIONS.get(name, 0.0)
     return f"""    <joint name="{name}">
 {ifs}
       <state_interface name="position">
-        <param name="initial_value">0.0</param>
+        <param name="initial_value">{initial}</param>
       </state_interface>
       <state_interface name="velocity"/>
     </joint>"""

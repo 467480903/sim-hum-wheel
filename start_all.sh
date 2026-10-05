@@ -93,6 +93,19 @@ ctrl_ready() {   # 7 个控制器激活 (broadcaster + 4 关节轨迹 + 2 舵轮
   [ "$n" -ge 7 ]
 }
 
+set_start_pose() {
+  info "设置机器人默认姿态 (腰部弯曲、上臂下垂、前臂前伸)..."
+  ros2 topic pub --once --wait-matching-subscriptions 1 \
+    /left_arm_joint_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory \
+    '{joint_names: [idx21_arm_l_joint1, idx22_arm_l_joint2, idx23_arm_l_joint3, idx24_arm_l_joint4, idx25_arm_l_joint5, idx26_arm_l_joint6, idx27_arm_l_joint7], points: [{positions: [1.5708, -1.5708, -1.5708, -1.5708, 0.0, 0.0, 0.0], time_from_start: {sec: 3}}]}' || return 1
+  ros2 topic pub --once --wait-matching-subscriptions 1 \
+    /right_arm_joint_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory \
+    '{joint_names: [idx61_arm_r_joint1, idx62_arm_r_joint2, idx63_arm_r_joint3, idx64_arm_r_joint4, idx65_arm_r_joint5, idx66_arm_r_joint6, idx67_arm_r_joint7], points: [{positions: [-1.5708, -1.5708, 1.5708, -1.5708, 0.0, 0.0, 0.0], time_from_start: {sec: 3}}]}' || return 1
+  ros2 topic pub --once --wait-matching-subscriptions 1 \
+    /waist_joint_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory \
+    '{joint_names: [idx01_body_joint1, idx02_body_joint2, idx03_body_joint3, idx04_body_joint4, idx05_body_joint5], points: [{positions: [-0.45, 0.7, -0.2, 0.0, 0.0], time_from_start: {sec: 3}}]}' || return 1
+}
+
 nav_ready() {    # lifecycle_manager 激活全部 nav2 节点
   grep -q 'Managed nodes are active' "$LOGS/nav.log" 2>/dev/null
 }
@@ -116,6 +129,7 @@ do_start() {
   start_bg 控制栈 control.log \
     "source $SIM_DIR/env.sh && ros2 launch g2_control control.launch.py"
   wait_until "控制栈就绪 (7 控制器激活)" 120 ctrl_ready || exit 1
+  set_start_pose || { bad "无法设置机器人默认姿态"; exit 1; }
 
   start_bg 导航栈 nav.log \
     "source $SIM_DIR/env.sh && ros2 launch g2_control nav.launch.py"

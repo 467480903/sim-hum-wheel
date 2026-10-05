@@ -16,11 +16,11 @@ const GROUPS = [
              'idx04_body_joint4', 'idx05_body_joint5'] },
   { key: 'head', title: '头部 (3轴)', ctrl: 'head_joint_controller',
     joints: ['idx11_head_joint1', 'idx12_head_joint2', 'idx13_head_joint3'] },
-  { key: 'larm', title: '左臂 (7轴)', ctrl: 'left_arm_joint_controller',
+  { key: 'larm', title: '左臂 (7轴)', ctrl: 'left_arm_joint_controller', posCtrl: 'left_arm_position_controller',
     joints: ['idx21_arm_l_joint1', 'idx22_arm_l_joint2', 'idx23_arm_l_joint3',
              'idx24_arm_l_joint4', 'idx25_arm_l_joint5', 'idx26_arm_l_joint6',
              'idx27_arm_l_joint7'] },
-  { key: 'rarm', title: '右臂 (7轴)', ctrl: 'right_arm_joint_controller',
+  { key: 'rarm', title: '右臂 (7轴)', ctrl: 'right_arm_joint_controller', posCtrl: 'right_arm_position_controller',
     joints: ['idx61_arm_r_joint1', 'idx62_arm_r_joint2', 'idx63_arm_r_joint3',
              'idx64_arm_r_joint4', 'idx65_arm_r_joint5', 'idx66_arm_r_joint6',
              'idx67_arm_r_joint7'] },
@@ -361,6 +361,8 @@ let lastJointMsg = null;
 const robotOdom = { x: 0, y: 0, yaw: 0, t: 0 };
 const amclPose = { x: 0, y: 0, yaw: 0, t: 0 };
 let navState = { status: '', goal: null, path: [] };
+let armControlMode = 'joint';
+let controlSwitchBusy = false;
 
 function setBadge(id, cls, text) {
   const el = $(id);
@@ -392,13 +394,27 @@ function setupTopics() {
     relMove: new ROSLIB.Topic({ ros, name: '/chassis_relative_move', messageType: 'geometry_msgs/Vector3' }),
     navGoal: new ROSLIB.Topic({ ros, name: '/nav_goal_pose', messageType: 'geometry_msgs/PoseStamped' }),
     navCancel: new ROSLIB.Topic({ ros, name: '/nav_cancel', messageType: 'std_msgs/Empty' }),
-    jtc: {},
+    jtc: {}, position: {},
+    switchControllers: new ROSLIB.Service({
+      ros, name: '/controller_manager/switch_controller',
+      serviceType: 'controller_manager_msgs/srv/SwitchController',
+    }),
+    listControllers: new ROSLIB.Service({
+      ros, name: '/controller_manager/list_controllers',
+      serviceType: 'controller_manager_msgs/srv/ListControllers',
+    }),
   };
   for (const g of GROUPS) {
     pubs.jtc[g.key] = new ROSLIB.Topic({
       ros, name: `/${g.ctrl}/joint_trajectory`,
       messageType: 'trajectory_msgs/JointTrajectory',
     });
+    if (g.posCtrl) {
+      pubs.position[g.key] = new ROSLIB.Topic({
+        ros, name: `/${g.posCtrl}/commands`,
+        messageType: 'std_msgs/Float64MultiArray',
+      });
+    }
   }
 
   sub('/joint_states', 'sensor_msgs/JointState', msg => {
@@ -476,6 +492,10 @@ function nowStamp() {
 function publishTrajectory(groupKey, positions, dur) {
   if (!pubs) return;
   const g = GROUPS.find(x => x.key === groupKey);
+  if (armControlMode === 'position' && g.posCtrl) {
+    pubs.position[groupKey].publish({ data: positions.map(Number) });
+    return;
+  }
   pubs.jtc[groupKey].publish({
     joint_names: g.joints,
     points: [{
@@ -485,11 +505,85 @@ function publishTrajectory(groupKey, positions, dur) {
   });
 }
 
+/* Change both arm controllers in one controller_manager switch request. */
+function switchArmControlMode(mode) {
+  return new Promise((resolve, reject) => {
+    if (!pubs || !pubs.switchControllers) {
+      reject(new Error('ROS 未连接'));
+      return;
+    }
+    const toPosition = mode === 'position';
+    let settled = false;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(responseTimeout);
+      if (error) reject(error);
+      else resolve(value);
+    };
+    const responseTimeout = setTimeout(
+      () => finish(new Error('控制器切换请求超时')), 7000);
+    pubs.listControllers.callService(new ROSLIB.ServiceRequest({}), state => {
+      if (settled) return;
+      const active = new Set((state.controller || [])
+        .filter(c => c.state === 'active').map(c => c.name));
+      const activate = [], deactivate = [];
+      for (const g of GROUPS.filter(item => item.posCtrl)) {
+        const wanted = toPosition ? g.posCtrl : g.ctrl;
+        const other = toPosition ? g.ctrl : g.posCtrl;
+        if (!active.has(wanted)) activate.push(wanted);
+        if (active.has(other)) deactivate.push(other);
+      }
+      if (!activate.length && !deactivate.length) {
+        armControlMode = mode;
+        finish();
+        return;
+      }
+      pubs.switchControllers.callService(new ROSLIB.ServiceRequest({
+        activate_controllers: activate,
+        deactivate_controllers: deactivate,
+        strictness: 2,
+        start_asap: false,
+        activate_asap: false,
+        timeout: { sec: 3, nanosec: 0 },
+      }), response => {
+        if (settled) return;
+        if (!response || !response.ok) {
+          finish(new Error(response && response.message || 'controller_manager 拒绝了切换'));
+          return;
+        }
+        armControlMode = mode;
+        finish();
+      }, error => {
+        finish(new Error(String(error || '控制器切换服务调用失败')));
+      });
+    }, error => {
+      finish(new Error(String(error || '无法查询控制器状态')));
+    });
+  });
+}
+
 /* =====================================================================
  * 4. 页签切换
  * ===================================================================== */
 for (const btn of document.querySelectorAll('#tabs button')) {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
+    if (controlSwitchBusy) return;
+    const nextMode = btn.dataset.tab === 'pose' ? 'position' :
+                     btn.dataset.tab === 'axis' ? 'joint' : armControlMode;
+    if (nextMode !== armControlMode) {
+      controlSwitchBusy = true;
+      setBadge('#controlModeStatus', 'run', '正在切换机械臂控制器…');
+      try {
+        await switchArmControlMode(nextMode);
+        setBadge('#controlModeStatus', 'ok', `机械臂: ${nextMode === 'position' ? '位置控制' : '轨迹控制'}`);
+      } catch (error) {
+        setBadge('#controlModeStatus', 'err', `切换失败: ${error.message}`);
+        controlSwitchBusy = false;
+        return;
+      }
+      controlSwitchBusy = false;
+    }
     document.querySelectorAll('#tabs button').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
@@ -718,6 +812,143 @@ function ikStep(hand, targetBase) {
   return true;
 }
 
+/* 末端步进使用 6D IK，同时约束位置和朝向。 */
+function eeBaseQuat(endObj) {
+  robotRoot.updateMatrixWorld(true);
+  const rootQ = robotRoot.getWorldQuaternion(new THREE.Quaternion()).invert();
+  return rootQ.multiply(endObj.getWorldQuaternion(new THREE.Quaternion())).normalize();
+}
+
+function rotationError(target, current) {
+  const q = target.clone().multiply(current.clone().invert()).normalize();
+  if (q.w < 0) { q.x *= -1; q.y *= -1; q.z *= -1; q.w *= -1; }
+  const s = Math.hypot(q.x, q.y, q.z);
+  const angle = s < 1e-9 ? 2 : 2 * Math.atan2(s, q.w) / s;
+  return new THREE.Vector3(q.x * angle, q.y * angle, q.z * angle);
+}
+
+function solveLinear(a, b) {
+  const n = b.length;
+  const m = a.map((row, i) => [...row, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let piv = col;
+    for (let r = col + 1; r < n; r++) if (Math.abs(m[r][col]) > Math.abs(m[piv][col])) piv = r;
+    if (Math.abs(m[piv][col]) < 1e-10) return null;
+    [m[col], m[piv]] = [m[piv], m[col]];
+    const scale = m[col][col];
+    for (let c = col; c <= n; c++) m[col][c] /= scale;
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = m[r][col];
+      for (let c = col; c <= n; c++) m[r][c] -= f * m[col][c];
+    }
+  }
+  return m.map(row => row[n]);
+}
+
+function solveJogIK(hand, targetPos, targetQuat) {
+  const g = hand.group;
+  const js = g.joints.map(jn => robotModel.joints.get(jn));
+  const original = g.joints.map(jn => jointPos[jn]);
+  let q = original.slice();
+  const apply = values => g.joints.forEach((jn, i) => setJointValue(js[i], values[i]));
+  const pose = values => {
+    apply(values);
+    return { pos: eeBasePos(hand.endLink), quat: eeBaseQuat(hand.endLink) };
+  };
+  let solved = false;
+
+  for (let it = 0; it < 60; it++) {
+    const current = pose(q);
+    const dp = targetPos.clone().sub(current.pos);
+    const dr = rotationError(targetQuat, current.quat);
+    if (dp.length() < 0.003 && dr.length() < 0.012) { solved = true; break; }
+    dp.clampLength(0, 0.05);
+    dr.clampLength(0, 0.15);
+
+    const J = Array.from({ length: 6 }, () => new Float64Array(q.length));
+    for (let i = 0; i < q.length; i++) {
+      const h = q[i] + 0.001 <= js[i].limit.upper ? 0.001 : -0.001;
+      const qp = q.slice(); qp[i] += h;
+      const perturbed = pose(qp);
+      const v = perturbed.pos.sub(current.pos).divideScalar(h);
+      const w = rotationError(perturbed.quat, current.quat).divideScalar(h);
+      J[0][i] = v.x; J[1][i] = v.y; J[2][i] = v.z;
+      J[3][i] = w.x; J[4][i] = w.y; J[5][i] = w.z;
+    }
+
+    const A = Array.from({ length: 6 }, () => Array(6).fill(0));
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 6; c++) {
+        for (let i = 0; i < q.length; i++) A[r][c] += J[r][i] * J[c][i];
+      }
+      A[r][r] += 0.003;
+    }
+    const error = [dp.x, dp.y, dp.z, dr.x, dr.y, dr.z];
+    const y = solveLinear(A, error);
+    if (!y) break;
+    q = q.map((value, i) => {
+      let dq = 0;
+      for (let r = 0; r < 6; r++) dq += J[r][i] * y[r];
+      return Math.max(js[i].limit.lower, Math.min(js[i].limit.upper,
+        value + Math.max(-0.18, Math.min(0.18, dq))));
+    });
+  }
+
+  if (!solved) {
+    const current = pose(q);
+    solved = current.pos.distanceTo(targetPos) < 0.008 &&
+             rotationError(targetQuat, current.quat).length() < 0.04;
+  }
+  apply(original);
+  return solved ? q : null;
+}
+
+function jogHand(handKey, action, reverseRotation) {
+  const hand = ee[handKey];
+  const status = $('#jogStatus');
+  const step = Number($('#jogStep').value);
+  if (!Number.isFinite(step) || step < 0.005 || step > 0.2) {
+    status.textContent = '步长请输入 0.005–0.2';
+    return;
+  }
+  if (!pubs || !hand.endLink || hand.dragging || hand.jogBusy ||
+      !hand.group.joints.every(jn => Number.isFinite(jointPos[jn]))) {
+    status.textContent = '请等待模型和 ROS 关节状态就绪';
+    return;
+  }
+
+  const targetPos = eeBasePos(hand.endLink);
+  const targetQuat = eeBaseQuat(hand.endLink);
+  const axes = { up: [0, 0, 1], down: [0, 0, -1], left: [0, 1, 0],
+                 right: [0, -1, 0], rx: [1, 0, 0], ry: [0, 1, 0], rz: [0, 0, 1] };
+  const axis = new THREE.Vector3(...axes[action]);
+  if (action === 'rx' || action === 'ry' || action === 'rz') {
+    targetQuat.premultiply(new THREE.Quaternion().setFromAxisAngle(axis, reverseRotation ? -step : step));
+  } else {
+    targetPos.addScaledVector(axis, step);
+  }
+
+  const q = solveJogIK(hand, targetPos, targetQuat);
+  if (!q) { status.textContent = '目标超出机械臂可达范围或关节限位'; return; }
+  const old = hand.group.joints.map(jn => jointPos[jn]);
+  const duration = Math.max(0.5, Math.min(1.5,
+    Math.max(...q.map((v, i) => Math.abs(v - old[i]))) / 0.6));
+  hand.group.joints.forEach((jn, i) => {
+    jointPos[jn] = q[i];
+    setJointValue(robotModel.joints.get(jn), q[i]);
+  });
+  publishTrajectory(hand.group.key, q, duration);
+  hand.jogBusy = true;
+  const buttons = [...document.querySelectorAll(`[data-hand="${handKey}"][data-jog]`)];
+  buttons.forEach(button => { button.disabled = true; });
+  setTimeout(() => {
+    hand.jogBusy = false;
+    buttons.forEach(button => { button.disabled = false; });
+  }, (duration + 0.15) * 1000);
+  status.textContent = `${handKey === 'L' ? '左手' : '右手'}末端目标已发送`;
+}
+
 function initCartesian() {
   ee.L.endLink = robotModel.links.get('arm_l_end_link');
   ee.R.endLink = robotModel.links.get('arm_r_end_link');
@@ -748,6 +979,11 @@ function initCartesian() {
       gizmo.enabled = ev.target.checked;
     });
   }
+
+  document.querySelectorAll('[data-jog]').forEach(button => {
+    button.addEventListener('click', event =>
+      jogHand(button.dataset.hand, button.dataset.jog, event.shiftKey));
+  });
 
   /* 拖拽期间 150ms 闭环: IK 收敛到引导轴位置 */
   setInterval(() => {

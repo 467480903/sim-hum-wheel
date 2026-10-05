@@ -119,6 +119,16 @@
   .ee-dot.l { background: #ff9a3c; }
   .ee-dot.r { background: #3cd0ff; }
   .ee-val { font-family: ui-monospace, monospace; color: #58b6e8; margin-left: auto; }
+  .jog-step { display: flex; align-items: center; gap: 8px; margin: 12px 0; color: #aab3c2; }
+  .jog-step input { width: 78px; }
+  .jog-hand { margin: 10px 0; }
+  .jog-hand h4 { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+  .jog-hand.l h4 { color: #ff9a3c; }
+  .jog-hand.r h4 { color: #3cd0ff; }
+  .jog-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .jog-grid .btn { padding: 7px 3px; }
+  .jog-grid .btn:disabled { opacity: .55; cursor: default; }
+  #jogStatus { min-height: 18px; color: #e8b74a; }
   label.chk { display: flex; gap: 5px; align-items: center; color: #aab3c2; cursor: pointer; }
   .pt-row {
     display: flex; align-items: center; gap: 8px; padding: 7px 10px;
@@ -175,6 +185,7 @@
 <header>
   <h1>G2 仿真控制台</h1>
   <span class="badge err" id="connStatus">ROS 连接中…</span>
+  <span class="badge" id="controlModeStatus">机械臂: 轨迹控制</span>
   <span class="badge" id="navStatus">导航: 待机</span>
   <span class="spacer"></span>
   <span id="odomText">x 0.00 y 0.00 θ 0°</span>
@@ -223,6 +234,37 @@
       <p class="hint">在 3D 视图中拖动左右手末端的 <b>x / y / z 箭头</b>（指导线），
       机械臂通过逆解实时跟随；坐标显示为基座系下的末端位置。</p>
 
+      <h3 class="sec">末端步进</h3>
+      <label class="jog-step" for="jogStep">步长 (位移 m / 旋转 rad)
+        <input type="number" id="jogStep" min="0.005" max="0.2" step="0.005" value="0.05">
+      </label>
+      <div class="jog-hand l">
+        <h4>左手</h4>
+        <div class="jog-grid">
+          <button class="btn" data-hand="L" data-jog="up">↑ 上</button>
+          <button class="btn" data-hand="L" data-jog="down">↓ 下</button>
+          <button class="btn" data-hand="L" data-jog="left">← 左</button>
+          <button class="btn" data-hand="L" data-jog="right">→ 右</button>
+          <button class="btn" data-hand="L" data-jog="rx">绕 X 旋转</button>
+          <button class="btn" data-hand="L" data-jog="ry">绕 Y 旋转</button>
+          <button class="btn" data-hand="L" data-jog="rz">绕 Z 旋转</button>
+        </div>
+      </div>
+      <div class="jog-hand r">
+        <h4>右手</h4>
+        <div class="jog-grid">
+          <button class="btn" data-hand="R" data-jog="up">↑ 上</button>
+          <button class="btn" data-hand="R" data-jog="down">↓ 下</button>
+          <button class="btn" data-hand="R" data-jog="left">← 左</button>
+          <button class="btn" data-hand="R" data-jog="right">→ 右</button>
+          <button class="btn" data-hand="R" data-jog="rx">绕 X 旋转</button>
+          <button class="btn" data-hand="R" data-jog="ry">绕 Y 旋转</button>
+          <button class="btn" data-hand="R" data-jog="rz">绕 Z 旋转</button>
+        </div>
+      </div>
+      <p class="hint">方向和旋转轴均以机器人基座为准；旋转按正方向步进，按住 Shift 点击可反向旋转。</p>
+      <div id="jogStatus" role="status" aria-live="polite"></div>
+
       <h3 class="sec">示教点位</h3>
       <div style="display:flex; gap:8px; margin-bottom:10px;">
         <button class="btn" id="btnSavePose">保存当前位姿</button>
@@ -251,10 +293,10 @@
 
       <h3 class="sec">相对运动 (里程计闭环)</h3>
       <div class="rel-grid">
-        <button class="btn" data-rel="0,0.5,0">前 0.5m</button>
-        <button class="btn" data-rel="0,-0.5,0">后 0.5m</button>
-        <button class="btn" data-rel="0.5,0,0">左 0.5m</button>
-        <button class="btn" data-rel="-0.5,0,0">右 0.5m</button>
+        <button class="btn" data-rel="0.5,0,0">前 0.5m</button>
+        <button class="btn" data-rel="-0.5,0,0">后 0.5m</button>
+        <button class="btn" data-rel="0,0.5,0">左 0.5m</button>
+        <button class="btn" data-rel="0,-0.5,0">右 0.5m</button>
         <button class="btn" data-rel="0,0,90">转 90°</button>
         <button class="btn" data-rel="0,0,-90">转 -90°</button>
       </div>

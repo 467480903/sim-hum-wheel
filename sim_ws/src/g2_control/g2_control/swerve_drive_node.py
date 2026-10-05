@@ -52,6 +52,7 @@ class SwerveDriveNode(Node):
         self.declare_parameter("max_ang_vel", 1.5)            # 车体最大角速度 rad/s
         self.declare_parameter("cmd_timeout", 0.5)            # cmd_vel 超时 s
         self.declare_parameter("base_z", 0.04)                # base_link 离地高度 (轮子着地)
+        self.declare_parameter("steer_ready_tol", 0.05)       # 转向到位阈值 rad (~3°), 到位后才驱动
 
         self.r = float(self.get_parameter("wheel_radius").value)
         self.max_steer_rate = float(self.get_parameter("max_steer_rate").value)
@@ -60,6 +61,7 @@ class SwerveDriveNode(Node):
         self.max_ang = float(self.get_parameter("max_ang_vel").value)
         self.cmd_timeout = float(self.get_parameter("cmd_timeout").value)
         self.base_z = float(self.get_parameter("base_z").value)
+        self.steer_ready_tol = float(self.get_parameter("steer_ready_tol").value)
 
         # 当前状态
         self.steer_pos = [0.0] * 4            # 当前转向角 (来自 /joint_states)
@@ -112,6 +114,7 @@ class SwerveDriveNode(Node):
 
         if moving:
             dt = 0.02
+            max_step = self.max_steer_rate * dt
             for i, (_sj, _dj, lx, ly) in enumerate(self.WHEELS):
                 vxi = vx - wz * ly
                 vyi = vy + wz * lx
@@ -119,14 +122,16 @@ class SwerveDriveNode(Node):
                 target = math.atan2(vyi, vxi)
                 # 最短角差 (转向 0-360 连续, 不需要翻转轮速方向)
                 err = wrap_pi(target - self.steer_pos[i])
-                # 转向角速度限幅
-                step = max(-self.max_steer_rate * dt, min(self.max_steer_rate * dt, err))
-                steer_cmd[i] = self.steer_pos[i] + step
-                # 剩余转向误差大 -> 轮速按 cos(err) 缩放, 误差>90° 停转避免侧滑
-                scale = math.cos(min(abs(err), math.pi / 2.0))
-                w = wi / self.r * scale
-                drive_cmd[i] = max(-self.max_wheel_speed,
-                                   min(self.max_wheel_speed, w))
+                if abs(err) > self.steer_ready_tol:
+                    # 尚未转向到位: 只做转向, 不驱动里程轮, 避免转向过程侧滑
+                    steer_cmd[i] = self.steer_pos[i] + max(-max_step, min(max_step, err))
+                    drive_cmd[i] = 0.0
+                else:
+                    # 转向到位: 锁定目标角 (连续等价形式), 再驱动里程轮
+                    steer_cmd[i] = self.steer_pos[i] + err
+                    w = wi / self.r
+                    drive_cmd[i] = max(-self.max_wheel_speed,
+                                       min(self.max_wheel_speed, w))
 
         msg_s = Float64MultiArray()
         msg_s.data = steer_cmd
