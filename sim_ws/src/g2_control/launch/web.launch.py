@@ -1,4 +1,7 @@
-"""Start only the static web console server, with its access log in this terminal."""
+"""Start only the static web server and show its access log in this terminal.
+
+Run: ros2 launch ~/sim/sim_ws/src/g2_control/launch/web.launch.py
+"""
 from launch import LaunchDescription
 from launch.actions import ExecuteProcess
 

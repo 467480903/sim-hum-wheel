@@ -45,7 +45,7 @@ sim/
 │       └── g2_control/       # 控制与功能节点
 │           ├── config/controllers.yaml    # 控制器配置
 │           ├── config/nav2_params.yaml    # nav2 参数 (全向底盘调优)
-│           ├── launch/                    # control / nav / slam / sim 四套
+│           ├── launch/                    # control / nav / rosbridge / web / slam
 │           ├── g2_control/                # 功能节点源码 (见架构图)
 │           └── test/                      # 7 个控制器测试 + 集成测试脚本
 ├── web/                      # 网页控制台 (纯静态, 无构建)
@@ -74,31 +74,52 @@ ros-humble-nav2-bringup ros-humble-slam-toolbox ros-humble-rosbridge-suite`
 
 ### 分终端启动并查看日志
 
-调试时可以在不同终端分别启动各服务，日志会直接显示在对应终端。先重新构建一次，使新增的 launch 文件安装到工作空间：
+调试时打开**四个不同的终端**，每个终端保持一个 launch 命令运行，日志会实时显示在那里。启动前，先停止通过 `start_all.sh` 运行的旧服务，避免同名 ROS 节点和 8080/9090 端口冲突。
+
+**每个新终端都必须执行 `source /home/wxf/sim/env.sh`。**它会加载 ROS 2 Humble 和 `sim_ws/install`，并设置本项目的 ROS 域。仅执行 `source /home/wxf/sim/sim/bin/activate` 只会激活 Python 虚拟环境，不能让 ROS 找到 `g2_description` 和 `g2_control`。若首次运行尚未构建工作空间，先按上面的「快速开始」执行 `colcon build`。以下命令直接使用源码里的 launch 文件，修改 launch 文件后无需重新构建。
+
+**终端 1：控制栈**（mock 硬件、控制器、TF、舵轮运动学、激光及功能节点）：
 
 ```bash
-cd ~/sim/sim_ws
-source /opt/ros/humble/setup.bash
-colcon build --packages-select g2_control
+cd /home/wxf/sim
+source /home/wxf/sim/env.sh
+ros2 pkg prefix g2_description  # 应输出 /home/wxf/sim/sim_ws/install/g2_description
+ros2 launch /home/wxf/sim/sim_ws/src/g2_control/launch/control.launch.py
 ```
 
-然后按需在不同终端分别执行（每个终端都先 `source ~/sim/env.sh`）：
+等待终端显示 7 个默认控制器已激活，再启动导航。
+
+**终端 2：导航栈**（地图、定位、规划、导航）：
 
 ```bash
-# 终端 1：控制栈、mock 硬件、机器人状态和控制功能节点
-ros2 launch g2_control control.launch.py
-
-# 终端 2：导航服务（需要地图导航时启动）
-ros2 launch g2_control nav.launch.py
-
-# 终端 3：浏览器与 ROS 通信桥
-ros2 launch g2_control rosbridge.launch.py
-
-# 终端 4：网页静态文件服务器
-ros2 launch g2_control web.launch.py
+cd /home/wxf/sim
+source /home/wxf/sim/env.sh
+ros2 launch /home/wxf/sim/sim_ws/src/g2_control/launch/nav.launch.py
 ```
 
-打开 `http://localhost:8080`。停止某项服务时，在对应终端按 `Ctrl+C`。不要再同时运行 `start_all.sh` 或 `sim.launch.py`，它们会重复启动这些服务。`start_all.sh` 仍可用于后台一键启动；查看单独日志请用上述分终端方式。
+等待终端显示 `Managed nodes are active`，再启动 rosbridge。`start_all.sh` 在这里还会等待 12 秒，以避开 DDS 发现高峰；手动启动时也建议稍等片刻。
+
+**终端 3：rosbridge**（网页与 ROS 通信）：
+
+```bash
+cd /home/wxf/sim
+source /home/wxf/sim/env.sh
+ros2 launch /home/wxf/sim/sim_ws/src/g2_control/launch/rosbridge.launch.py
+```
+
+**终端 4：网页服务**（访问日志显示在当前终端）：
+
+```bash
+cd /home/wxf/sim
+source /home/wxf/sim/env.sh
+ros2 launch /home/wxf/sim/sim_ws/src/g2_control/launch/web.launch.py
+```
+
+打开 `http://localhost:8080`。按 `Ctrl+C` 停止对应终端的服务组。若看到 `PackageNotFoundError: package 'g2_description' not found`，在**报错的同一个终端**重新执行 `source /home/wxf/sim/env.sh`，并运行 `ros2 pkg prefix g2_description` 检查工作空间是否已加载。单独启动 `control.launch.py` 时不会执行 `start_all.sh` 中的默认姿态设置，机器人以硬件初始姿态启动。
+
+如需 RViz，在另一个已执行 `source /home/wxf/sim/env.sh` 的终端运行 `ros2 run rviz2 rviz2 -d /home/wxf/sim/sim_ws/src/g2_description/rviz/sim.rviz`。
+
+`slam.launch.py` 保留用于**重新建图**：它会启动控制栈、RViz 和 `slam_toolbox`，与上述正常导航流程不同。使用时不要另外启动 `control.launch.py` 或 `nav.launch.py`，以免节点重复；在已加载 `env.sh` 的终端运行 `ros2 launch /home/wxf/sim/sim_ws/src/g2_control/launch/slam.launch.py`。
 
 ## 独立控制器启动与切换
 
@@ -107,9 +128,9 @@ ros2 launch g2_control web.launch.py
 > 以下命令必须在控制栈已运行时执行。若只调试控制器，可在一个终端启动控制栈：
 >
 > ```bash
-> cd ~/sim
-> source env.sh
-> ros2 launch g2_control control.launch.py
+> cd /home/wxf/sim
+> source /home/wxf/sim/env.sh
+> ros2 launch /home/wxf/sim/sim_ws/src/g2_control/launch/control.launch.py
 > ```
 >
 > 另开一个终端执行下列命令；两个终端都需要先 `source ~/sim/env.sh`。不要同时执行 `start_all.sh` 和 `control.launch.py`，否则会启动两套同名 ROS 节点。

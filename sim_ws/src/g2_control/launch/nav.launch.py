@@ -1,7 +1,8 @@
 """导航栈单独启动 (控制栈已在运行时使用, 避免重复启动 controller_manager):
 
-用法: ros2 launch g2_control nav.launch.py
+独立启动: ros2 launch ~/sim/sim_ws/src/g2_control/launch/nav.launch.py
 包含: map_server + amcl + planner/controller/bt_navigator/behavior + lifecycle_manager
+所有节点的输出都显示在当前终端。
 """
 import os
 

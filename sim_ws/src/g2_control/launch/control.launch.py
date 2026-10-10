@@ -1,6 +1,9 @@
 """G2 仿真控制栈启动 (无 rviz, 供测试/复用):
 robot_state_publisher + controller_manager(mock 硬件) + 全部控制器
 + 舵轮运动学/里程计 + 虚拟激光 + 相对运动 + 导航中继
+
+独立启动: ros2 launch ~/sim/sim_ws/src/g2_control/launch/control.launch.py
+所有节点的输出都显示在当前终端。
 """
 import os
 
@@ -49,6 +52,7 @@ def generate_launch_description():
         package="robot_state_publisher", executable="robot_state_publisher",
         name="robot_state_publisher",
         parameters=[{"robot_description": robot_desc}],
+        output="screen",
     ))
 
     # 房间描述 (仅静态 TF + /room_description)
@@ -60,12 +64,14 @@ def generate_launch_description():
         parameters=[{"robot_description": room_desc}],
         remappings=[("robot_description", "room_description"),
                     ("joint_states", "room_joint_states")],
+        output="screen",
     ))
     # map -> room_world 静态 TF, 使场景与导航地图同源
     ld.add_action(Node(
         package="tf2_ros", executable="static_transform_publisher",
         name="map_to_room_world",
         arguments=["0", "0", "0", "0", "0", "0", "map", "room_world"],
+        output="screen",
     ))
 
     # controller_manager + mock 硬件
@@ -84,12 +90,14 @@ def generate_launch_description():
         package="controller_manager", executable="spawner",
         arguments=ACTIVE + ["--controller-manager", "/controller_manager",
                             "--param-file", CONTROLLERS],
+        output="screen",
     ))
     # 仅加载不激活
     ld.add_action(Node(
         package="controller_manager", executable="spawner",
         arguments=INACTIVE + ["--inactive", "--controller-manager", "/controller_manager",
                               "--param-file", CONTROLLERS],
+        output="screen",
     ))
 
     # 舵轮运动学 + 里程计
